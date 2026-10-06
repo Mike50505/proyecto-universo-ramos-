@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: Universo Ramos API
+  version: 1.0.0
+  description: API de solo lectura para integraciones entre servidores.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Part:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        part_number: {type: string}
+        customer: {type: string}
+        destination: {type: string, nullable: true}
+        diameter: {type: string}
+        wall: {type: string, nullable: true}
+        wall_note: {type: string, description: Texto original de PARED cuando no es un decimal}
+        weight: {type: string, nullable: true}
+        box: {type: string, nullable: true}
+        std: {type: string}
+        sheet_color: {type: string, nullable: true}
+        reference_customer: {type: string, description: Segunda columna CLIENTE del Excel, sin relación inferida}
+        reference_plant: {type: string, description: Columna PLANTA del Excel, sin relación inferida}
+        active: {type: boolean}
+        version: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Error:
+      type: object
+      properties:
+        detail: {type: string}
+paths:
+  /bootstrap/:
+    get:
+      summary: Instrucciones y cursor para carga inicial
+      responses:
+        '200': {description: Datos de arranque}
+        '401': {description: Sin credencial válida}
+  /parts/:
+    get:
+      summary: Lista piezas, con búsqueda parcial
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: customer, in: query, schema: {type: string}}
+        - {name: active, in: query, schema: {type: boolean}}
+        - {name: page, in: query, schema: {type: integer}}
+        - {name: page_size, in: query, schema: {type: integer, maximum: 200}}
+      responses:
+        '200': {description: Página con count, next, previous y results}
+        '401': {description: Sin credencial válida}
+  /parts/exact/:
+    get:
+      summary: Busca un código exacto
+      parameters:
+        - {name: code, in: query, required: true, schema: {type: string}}
+        - {name: customer, in: query, schema: {type: string}}
+      responses:
+        '200': {description: count, multiple y results}
+        '400': {description: Código ausente}
+  /parts/{id}/:
+    get:
+      summary: Consulta por UUID, incluidas piezas inactivas
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: Pieza, content: {application/json: {schema: {$ref: '#/components/schemas/Part'}}}}
+        '404': {description: Pieza no encontrada}
+  /catalogs/:
+    get:
+      summary: Catálogos relacionados activos
+      responses:
+        '200': {description: Clientes, destinos, cajas y colores}
+  /changes/:
+    get:
+      summary: Cambios incrementales con cursor opaco
+      parameters:
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 200}}
+      responses:
+        '200': {description: Eventos, next_cursor y has_more}
+        '400': {description: Cursor o límite inválido}

@@ -1,0 +1,14 @@
+{% if page.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="Páginas">
+  {% if page.has_previous %}<a class="page-button page-step" href="?{% for key,value in request.GET.items %}{% if key != 'page' %}{{ key|urlencode }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page.previous_page_number }}" rel="prev">← Anterior</a>{% else %}<span class="page-button page-step disabled" aria-disabled="true">← Anterior</span>{% endif %}
+  <span class="page-summary">Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+  <span class="page-numbers">
+    {% for number in page_numbers %}
+      {% if number == '…' %}<span class="page-ellipsis" aria-hidden="true">…</span>
+      {% elif number == page.number %}<span class="page-button page-number current" aria-current="page">{{ number }}</span>
+      {% else %}<a class="page-button page-number" href="?{% for key,value in request.GET.items %}{% if key != 'page' %}{{ key|urlencode }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ number }}" aria-label="Ir a la página {{ number }}">{{ number }}</a>{% endif %}
+    {% endfor %}
+  </span>
+  {% if page.has_next %}<a class="page-button page-step" href="?{% for key,value in request.GET.items %}{% if key != 'page' %}{{ key|urlencode }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page.next_page_number }}" rel="next">Siguiente →</a>{% else %}<span class="page-button page-step disabled" aria-disabled="true">Siguiente →</span>{% endif %}
+</nav>
+{% endif %}

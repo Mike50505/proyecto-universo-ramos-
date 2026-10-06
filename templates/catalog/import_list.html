@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% load catalog_tags %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">Cargas controladas</p><h1>Importaciones</h1></div><div class="actions"><a class="button primary" href="{% url 'catalog:import_upload' %}">Importar Excel</a><a class="button secondary" href="{% url 'catalog:import_template' %}">Descargar plantilla</a></div></div>
+<div class="table-scroll"><table><thead><tr><th>Archivo</th><th>Hoja</th><th>Usuario</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+{% for job in jobs %}<tr><td>{{ job.filename }}</td><td>{{ job.sheet|default:'—' }}</td><td>{{ job.actor }}</td><td>{{ job.created_at|date:'d/m/Y H:i' }}</td><td><span class="status {% if job.status == 'confirmed' %}active{% endif %}">{{ job.status|import_job_status }}</span></td><td><div class="row-actions"><a class="button secondary" href="{% if job.result %}{% url 'catalog:import_preview' job.pk %}{% else %}{% url 'catalog:import_map' job.pk %}{% endif %}">Abrir</a>{% if job.status != 'confirmed' %}<form method="post" action="{% url 'catalog:import_delete' job.pk %}" data-confirm="¿Eliminar esta importación pendiente y su archivo? Esta acción no se puede deshacer.">{% csrf_token %}<button class="button danger" type="submit">Eliminar</button></form>{% endif %}</div></td></tr>
+{% empty %}<tr><td colspan="6">No hay importaciones.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

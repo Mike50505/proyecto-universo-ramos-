@@ -1,0 +1,4 @@
+<div class="preview-controls">
+  {% include 'catalog/pagination.html' %}
+  {% if job.status == 'preview' and not blocked %}<form method="post" class="confirm-area" data-confirm="¿Confirmar esta importación? Se aplicarán los cambios mostrados.">{% csrf_token %}<button class="button primary">Confirmar importación</button></form>{% endif %}
+</div>
