@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:17
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -13,14 +14,25 @@ services:
       retries: 10
   web:
     build: .
+    restart: unless-stopped
     env_file: .env
     ports:
-      - "${APP_PORT:-38080}:8000"
+      - "127.0.0.1:${APP_PORT:-38080}:8000"
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - imports:/app/media
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.0
+    user: "1000:1000"
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    depends_on:
+      - web
+    volumes:
+      - ./cloudflared.yml:/etc/cloudflared/config.yml:ro
+      - /home/sistemasmr/.cloudflared/b249bf57-272e-417a-8f5b-fa7cd0080ec8.json:/etc/cloudflared/credentials.json:ro
 volumes:
   postgres_data:
   imports:

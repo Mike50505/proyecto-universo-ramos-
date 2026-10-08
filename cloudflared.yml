@@ -1,0 +1,7 @@
+tunnel: b249bf57-272e-417a-8f5b-fa7cd0080ec8
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: universo.mesaramos.com
+    service: http://web:8000
+  - service: http_status:404
