@@ -4,6 +4,8 @@
 .row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.row-actions form{margin:0}.row-actions .button{min-height:36px;padding:6px 13px}.button.danger{background:#fff;color:var(--danger);border-color:#eab2ad}.button.danger:hover{background:#fff1f0;border-color:var(--danger)}
 .view-switch+.pagination{justify-content:flex-start;margin:0 0 18px}
 .sample-label{font-size:.8em;font-weight:700;white-space:nowrap;color:var(--muted)}
+[data-preview-feedback]{min-height:1.5em}
+[data-preview-content]{overflow-anchor:none}
 .preview-filter{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:20px 0 10px}
 .sample-field input[type=checkbox]{width:20px;height:20px;align-self:flex-start;accent-color:var(--blue)}
 .preview-sample-control{display:flex;align-items:center;gap:8px;margin:0}

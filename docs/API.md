@@ -19,11 +19,13 @@ curl -H "Authorization: Bearer $UR_API_KEY" "https://catalogo.example/api/v1/par
 
 Un evento contiene `sequence`, `operation`, `part_id` y `part`, donde `part` es la imagen persistida **en ese evento** (campos con sufijo `_id` para catálogos). Los decimales se entregan como cadenas para conservar precisión; `null` representa ausencia y `"0"` representa cero. Las operaciones son `create`, `update`, `deactivate` y `reactivate`.
 
-## Piezas de muestra
+## Piezas pendientes de aprobación (campo técnico `is_sample`)
 
-Cada pieza y evento entrega `is_sample` como booleano. Los eventos anteriores a esta función se entregan con `is_sample=false`. El código original no incluye la etiqueta visual `(MUESTRA)`. Una pieza de muestra está pendiente de autorización; `active` sigue representando su disponibilidad y es independiente de esta clasificación.
+Universo Ramos presenta esta clasificación como una pieza nueva pendiente de aprobación para producción regular. El nombre técnico del campo y la política de acceso se conservan para las aplicaciones consumidoras, incluido Helians.
 
-Un administrador controla **Permitir muestras** en la pantalla **Integraciones** y pulsa **Guardar** para cada app. La política se asocia a su credencial; use una credencial por aplicación. Las credenciales existentes conservan el acceso a ambos tipos y las nuevas permiten elegirlo al crearlas.
+Cada pieza y evento entrega `is_sample` como booleano. Los eventos anteriores a esta función se entregan con `is_sample=false`. El código original no incluye la etiqueta visual `(PENDIENTE DE APROBACIÓN)`. Una pieza de muestra está pendiente de autorización; `active` sigue representando su disponibilidad y es independiente de esta clasificación.
+
+Un administrador controla **Permitir pendientes de aprobación** en la pantalla **Integraciones** y pulsa **Guardar** para cada app. La política se asocia a su credencial; use una credencial por aplicación. Las credenciales existentes conservan el acceso a ambos tipos y las nuevas permiten elegirlo al crearlas.
 
 La API aplica esta restricción en `/parts/`, `/parts/exact/` y `/parts/{uuid}/`, aunque se solicite `is_sample=true`. Una muestra no autorizada devuelve 404 en la consulta por UUID. El parámetro opcional `?is_sample=false` puede restringir más la selección, pero nunca ampliar los permisos de la credencial.
 

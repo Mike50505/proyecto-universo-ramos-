@@ -16,6 +16,113 @@ from .models import Box, Customer, Destination, ImportJob, Integration, Part, Ch
 from .services import create_part, update_part
 
 class CatalogTests(TestCase):
+    def test_preview_async_checkbox_does_not_redirect(self):
+        self.client.force_login(self.editor)
+        job = self.make_job([['LENNOX 1', 'ASYNC-1', None]])
+        preview(job)
+        url = reverse('catalog:import_preview', args=[job.pk])
+        payload = {'action': 'set_sample', 'row': 2, 'is_sample': 'on', 'expected_sample': 'false'}
+        response = self.client.post(url, payload, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('Location', response)
+        self.assertContains(response, 'data-preview-content')
+        job.refresh_from_db()
+        self.assertTrue(job.result['rows'][0]['is_sample'])
+        self.assertEqual(Part.objects.count(), 0)
+        self.assertEqual(self.client.post(url, payload, HTTP_X_REQUESTED_WITH='XMLHttpRequest').status_code, 400)
+
+    def test_bulk_classification_all_pages_and_stale_revision(self):
+        from .importing import preview_revision
+        self.client.force_login(self.editor)
+        job = self.make_job([['LENNOX 1', f'BULK-{i}', None] for i in range(60)] + [['LENNOX 1', 'DUP', None]] * 2)
+        preview(job)
+        url = reverse('catalog:import_preview', args=[job.pk])
+        payload = {'action': 'set_all_samples', 'all_pending': 'on', 'expected_revision': preview_revision(job)}
+        response = self.client.post(url + '?page=2&status=new', payload, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        job.refresh_from_db()
+        self.assertEqual(len(job.sample_overrides), 60)
+        self.assertTrue(all(row['is_sample'] for row in job.result['rows'] if row['status'] == 'new'))
+        self.assertFalse(any(str(row['row']) in job.sample_overrides for row in job.result['rows'] if row['status'] == 'duplicate'))
+        self.assertEqual(Part.objects.count(), 0)
+        self.assertEqual(self.client.post(url, payload, HTTP_X_REQUESTED_WITH='XMLHttpRequest').status_code, 400)
+        payload = {'action': 'set_all_samples', 'expected_revision': preview_revision(job)}
+        self.assertEqual(self.client.post(url, payload, HTTP_X_REQUESTED_WITH='XMLHttpRequest').status_code, 200)
+        job.refresh_from_db()
+        self.assertTrue(all(value is False for value in job.sample_overrides.values()))
+        job.status = 'confirmed'
+        job.save()
+        payload['expected_revision'] = preview_revision(job)
+        self.assertEqual(self.client.post(url, payload, HTTP_X_REQUESTED_WITH='XMLHttpRequest').status_code, 400)
+
+    def test_bulk_classification_respects_add_mode_and_owner(self):
+        from .importing import preview_revision
+        self.client.force_login(self.editor)
+        create_part({'customer': self.customer, 'part_number': 'EXISTING-BULK'}, self.editor)
+        job = self.make_job([['LENNOX 1', 'EXISTING-BULK', None], ['LENNOX 1', 'NEW-BULK', None]])
+        job.mode = 'add'
+        job.save()
+        preview(job)
+        url = reverse('catalog:import_preview', args=[job.pk])
+        payload = {'action': 'set_all_samples', 'all_pending': 'on', 'expected_revision': preview_revision(job)}
+        self.assertEqual(self.client.post(url, payload, HTTP_X_REQUESTED_WITH='XMLHttpRequest').status_code, 200)
+        job.refresh_from_db()
+        self.assertEqual(job.sample_overrides, {'3': True})
+        confirm(job.pk, self.editor)
+        self.assertFalse(Part.objects.get(part_number='EXISTING-BULK').is_sample)
+        self.assertTrue(Part.objects.get(part_number='NEW-BULK').is_sample)
+        other = User.objects.create_user('bulk-other')
+        other.groups.add(Group.objects.get(name='Editor'))
+        self.client.force_login(other)
+        self.assertEqual(self.client.post(url, payload, HTTP_X_REQUESTED_WITH='XMLHttpRequest').status_code, 404)
+
+    def test_only_part_number_required_on_create_and_edit(self):
+        from .forms import PartForm
+        form = PartForm()
+        self.assertEqual([name for name, field in form.fields.items() if field.required], ['part_number'])
+        self.client.force_login(self.editor)
+        response = self.client.post(reverse('catalog:create'), {'part_number': 'PENDING-1'})
+        self.assertEqual(response.status_code, 302)
+        part = Part.objects.get(part_number='PENDING-1')
+        self.assertEqual(part.customer.name, 'PENDIENTE')
+        self.assertEqual(part.changes.get().after['customer_id'], part.customer_id)
+        response = self.client.post(reverse('catalog:edit', args=[part.pk]), {
+            'part_number': part.part_number, 'version': part.version, 'customer': self.customer.pk,
+        })
+        self.assertEqual(response.status_code, 302)
+        part.refresh_from_db()
+        self.assertEqual(part.customer, self.customer)
+        response = self.client.post(reverse('catalog:edit', args=[part.pk]), {
+            'part_number': part.part_number, 'version': part.version,
+        })
+        self.assertEqual(response.status_code, 302)
+        part.refresh_from_db()
+        self.assertEqual(part.customer.name, 'PENDIENTE')
+        self.assertEqual(Customer.objects.filter(name='PENDIENTE').count(), 1)
+        self.assertEqual(self.client.post(reverse('catalog:create'), {}).status_code, 200)
+        self.assertEqual(Part.objects.count(), 1)
+
+    def test_import_without_customer_defaults_only_when_needed(self):
+        part = create_part({'customer': self.customer, 'part_number': 'EXISTING'}, self.editor)
+        job = self.make_job([['', 'NEW-1', None], ['', 'EXISTING', None]])
+        job.mapping = {'part_number': 2}
+        job.save()
+        rows = preview(job)
+        self.assertEqual(rows[0]['after']['customer'], 'PENDIENTE')
+        self.assertEqual(rows[1]['status'], 'unchanged')
+        self.assertFalse(Customer.objects.filter(name='PENDIENTE').exists())
+        confirm(job.pk, self.editor)
+        self.assertEqual(Part.objects.get(part_number='NEW-1').customer.name, 'PENDIENTE')
+        part.refresh_from_db()
+        self.assertEqual(part.customer, self.customer)
+        job = self.make_job([['', 'EXISTING', None]])
+        job.clear_blanks = True
+        job.save()
+        self.assertEqual(preview(job)[0]['after']['customer'], 'PENDIENTE')
+        confirm(job.pk, self.editor)
+        part.refresh_from_db()
+        self.assertEqual(part.customer.name, 'PENDIENTE')
+
     @classmethod
     def setUpTestData(cls):
         for role in ('Administrador', 'Editor', 'Consulta'):
@@ -253,10 +360,10 @@ class CatalogTests(TestCase):
         part = Part.objects.get(part_number='SAMPLE-1')
         self.assertTrue(part.is_sample)
         self.assertTrue(part.changes.get().after['is_sample'])
-        self.assertContains(self.client.get(reverse('catalog:list')), '(MUESTRA)')
-        self.assertContains(self.client.get(reverse('catalog:detail', args=[part.pk])), '(MUESTRA)')
+        self.assertContains(self.client.get(reverse('catalog:list')), '(PENDIENTE DE APROBACIÓN)')
+        self.assertContains(self.client.get(reverse('catalog:detail', args=[part.pk])), '(PENDIENTE DE APROBACIÓN)')
         self.assertNotContains(self.client.get(reverse('catalog:list'), {'is_sample': 'false'}), 'SAMPLE-1')
-        self.assertContains(self.client.get(reverse('catalog:export')), 'MUESTRA')
+        self.assertContains(self.client.get(reverse('catalog:export')), 'PENDIENTE DE APROBACIÓN')
         self.client.post(reverse('catalog:edit', args=[part.pk]), {
             'customer': self.customer.pk, 'part_number': part.part_number, 'version': part.version,
         })
@@ -265,6 +372,8 @@ class CatalogTests(TestCase):
         self.assertFalse(part.changes.last().after['is_sample'])
 
     def test_sample_import_preserves_and_changes_classification(self):
+        for label in ('MUESTRA', 'PENDIENTE DE APROBACIÓN'):
+            self.assertEqual(auto_mapping(['CLIENTE', 'NÚMERO DE PARTE', label])['is_sample'], 3)
         part = create_part({'customer': self.customer, 'part_number': 'S-1', 'is_sample': True}, self.editor)
         job = self.make_job([['LENNOX 1', 'S-1', 1]])
         preview(job)
@@ -482,7 +591,7 @@ class CatalogTests(TestCase):
         self.client.post(url, {'action': 'create', 'name': 'With samples', 'include_samples': 'on'})
         allowed = Integration.objects.get(name='With samples')
         self.assertTrue(allowed.include_samples)
-        self.assertContains(self.client.get(url), 'Permitir muestras')
+        self.assertContains(self.client.get(url), 'Permitir pendientes de aprobación')
         payload = {'action': 'sample_policy', 'pk': allowed.pk, 'policy_version': 1}
         self.assertEqual(self.client.post(url, payload).status_code, 302)
         allowed.refresh_from_db()

@@ -14,7 +14,7 @@ from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from .forms import NamedForm, PartForm, UserForm
-from .importing import FIELDS, LABELS, auto_mapping, confirm, error_csv, headers, preview, set_preview_sample, template_bytes, workbook
+from .importing import FIELDS, LABELS, auto_mapping, can_classify, confirm, error_csv, headers, preview, preview_revision, set_all_preview_samples, set_preview_sample, template_bytes, workbook
 from .models import Box, Change, Customer, Destination, ImportJob, Integration, Part, SheetColor
 from .permissions import require_admin, require_edit, require_read
 from .services import create_part, update_part
@@ -52,7 +52,7 @@ def export_parts(request):
     response['Content-Disposition'] = 'attachment; filename="universo-ramos.csv"'
     response.write('\ufeff')
     writer = csv.writer(response)
-    writer.writerow(['UUID', 'Cliente', 'Destino', 'Número de parte', 'Diámetro', 'Pared', 'Peso', 'Caja', 'STD.', 'Hoja color', 'Cliente (segunda columna)', 'Planta', 'Activo', 'Versión', 'MUESTRA'])
+    writer.writerow(['UUID', 'Cliente', 'Destino', 'Número de parte', 'Diámetro', 'Pared', 'Peso', 'Caja', 'STD.', 'Hoja color', 'Cliente (segunda columna)', 'Planta', 'Activo', 'Versión', 'PENDIENTE DE APROBACIÓN'])
     for part in qs.iterator():
         writer.writerow([part.id, part.customer, part.destination or '', part.part_number, part.diameter, part.wall_note or (part.wall if part.wall is not None else ''), part.weight if part.weight is not None else '', part.box or '', part.std, part.sheet_color or '', part.reference_customer, part.reference_plant, part.active, part.version, 'Sí' if part.is_sample else 'No'])
     return response
@@ -199,33 +199,58 @@ def import_map(request, pk):
 def import_preview(request, pk):
     require_edit(request.user)
     job = get_object_or_404(ImportJob, pk=pk, actor=request.user)
+    asynchronous = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if request.method == 'POST':
         try:
-            if request.POST.get('action') == 'set_sample':
-                try:
-                    row_number = int(request.POST.get('row', ''))
-                except (TypeError, ValueError):
-                    return HttpResponseBadRequest('Fila inválida')
-                if request.POST.get('expected_sample') not in ('true', 'false'):
-                    return HttpResponseBadRequest('Clasificación anterior inválida')
-                if request.POST.get('is_sample') not in (None, 'on'):
-                    return HttpResponseBadRequest('Clasificación inválida')
-                set_preview_sample(pk, request.user, row_number, request.POST.get('is_sample') == 'on', request.POST['expected_sample'] == 'true')
-                messages.success(request, 'Clasificación guardada en la vista previa. Se aplicará al confirmar la importación.')
-                target = redirect('catalog:import_preview', pk=pk)
-                if request.GET:
-                    target['Location'] += '?' + request.GET.urlencode()
-                target['Location'] += f'#sample-row-{row_number}'
-                return target
-            if request.POST.get('action') not in (None, 'confirm'):
+            if request.POST.get('action') in ('set_sample', 'set_all_samples'):
+                bulk = request.POST['action'] == 'set_all_samples'
+                if bulk:
+                    if request.POST.get('all_pending') not in (None, 'on'):
+                        return HttpResponseBadRequest('Clasificación inválida')
+                    job = set_all_preview_samples(pk, request.user, request.POST.get('all_pending') == 'on', request.POST.get('expected_revision', ''))
+                else:
+                    job = save_preview_sample_request(request, pk)
+                    if isinstance(job, HttpResponse):
+                        return job
+                if not asynchronous:
+                    messages.success(request, 'Clasificación guardada en la vista previa. Se aplicará al confirmar la importación.')
+                    target = redirect('catalog:import_preview', pk=pk)
+                    if request.GET:
+                        target['Location'] += '?' + request.GET.urlencode()
+                    if not bulk:
+                        target['Location'] += '#sample-row-' + request.POST['row']
+                    return target
+            elif request.POST.get('action') in (None, 'confirm'):
+                confirm(pk, request.user)
+                messages.success(request, 'Importación confirmada.')
+                return redirect('catalog:import_preview', pk=pk)
+            else:
                 return HttpResponseBadRequest('Acción inválida')
-            confirm(pk, request.user)
-            messages.success(request, 'Importación confirmada.')
-            return redirect('catalog:import_preview', pk=pk)
         except ValidationError as exc:
+            if asynchronous:
+                return HttpResponseBadRequest('; '.join(exc.messages))
             messages.error(request, '; '.join(exc.messages))
         except IntegrityError:
+            if asynchronous:
+                return HttpResponseBadRequest('El catálogo cambió. Genere otra vista previa.')
             messages.error(request, 'El catálogo cambió durante la confirmación. Genere otra vista previa.')
+    return render_import_preview(request, job)
+
+
+def save_preview_sample_request(request, pk):
+    try:
+        row_number = int(request.POST.get('row', ''))
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest('Fila inválida')
+    if request.POST.get('expected_sample') not in ('true', 'false'):
+        return HttpResponseBadRequest('Clasificación anterior inválida')
+    if request.POST.get('is_sample') not in (None, 'on'):
+        return HttpResponseBadRequest('Clasificación inválida')
+    return set_preview_sample(pk, request.user, row_number, request.POST.get('is_sample') == 'on', request.POST['expected_sample'] == 'true')
+
+def render_import_preview(request, job):
+    eligible = [row for row in job.result.get('rows', []) if can_classify(job, row)]
+    bulk_state = {'eligible_count': len(eligible), 'all_pending': bool(eligible) and all(row.get('is_sample', False) for row in eligible), 'some_pending': any(row.get('is_sample', False) for row in eligible), 'preview_revision': preview_revision(job)}
     rows = job.result.get('rows', [])
     status_filter = request.GET.get('status', 'all')
     choices = {'all': None, 'new': {'new'}, 'update': {'update'}, 'changed': {'new', 'update'}, 'issues': {'duplicate', 'error'}, 'unchanged': {'unchanged'}, 'skipped': {'skipped'}}
@@ -234,7 +259,7 @@ def import_preview(request, pk):
     selected = choices[status_filter]
     filtered = rows if selected is None else [row for row in rows if row['status'] in selected]
     page = Paginator(filtered, 50).get_page(request.GET.get('page'))
-    return render(request, 'catalog/import_preview.html', {'job': job, 'page': page, 'status_filter': status_filter, 'total_rows': len(rows), 'page_numbers': page.paginator.get_elided_page_range(page.number, on_each_side=2, on_ends=1), 'blocked': any(r['status'] in ('duplicate', 'error') for r in rows)})
+    return render(request, 'catalog/import_preview.html', {'job': job, 'page': page, 'status_filter': status_filter, 'total_rows': len(rows), 'page_numbers': page.paginator.get_elided_page_range(page.number, on_each_side=2, on_ends=1), 'blocked': any(r['status'] in ('duplicate', 'error') for r in rows), **bulk_state})
 
 @login_required
 def import_errors(request, pk):
@@ -308,7 +333,7 @@ def integrations(request):
                         integration.include_samples = include_samples
                         integration.policy_version += 1
                         integration.save(update_fields=['include_samples', 'policy_version'])
-                    messages.success(request, f'Permiso de muestras guardado para {integration.name}. Se aplicará en su próxima consulta o sincronización.')
+                    messages.success(request, f'Permiso de piezas pendientes de aprobación guardado para {integration.name}. Se aplicará en su próxima consulta o sincronización.')
             return redirect('catalog:integrations')
         elif request.POST.get('action') == 'revoke':
             from django.utils import timezone

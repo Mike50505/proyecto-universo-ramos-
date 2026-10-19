@@ -1,7 +1,6 @@
-document.querySelectorAll('form[data-confirm]').forEach(form => {
-  form.addEventListener('submit', event => {
-    if (!window.confirm(form.dataset.confirm)) event.preventDefault();
-  });
+document.addEventListener('submit', event => {
+  const form = event.target.closest('form[data-confirm]');
+  if (form && !window.confirm(form.dataset.confirm)) event.preventDefault();
 });
 
 const themeToggle = document.querySelector('.theme-toggle');

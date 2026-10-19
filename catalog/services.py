@@ -1,9 +1,14 @@
 import logging
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
-from .models import Change, Part
+from .models import Change, Customer, Part
 
 logger = logging.getLogger('catalog')
+
+
+def pending_customer():
+    customer, _ = Customer.objects.get_or_create(name__iexact='PENDIENTE', defaults={'name': 'PENDIENTE'})
+    return customer
 
 def lock_change_stream():
     # Serializes writers before their change IDs are allocated. A cursor never passes an uncommitted lower ID.
@@ -15,6 +20,8 @@ def lock_change_stream():
 def create_part(data, actor, source="form"):
     lock_change_stream()
     part = Part(**data, created_by=actor, updated_by=actor)
+    if part.customer_id is None:
+        part.customer = pending_customer()
     part.full_clean()
     part.save()
     Change.objects.create(part=part, actor=actor, operation="create", source=source, after=part.snapshot())
@@ -34,6 +41,8 @@ def update_part(part_id, data, expected_version, actor, source="form"):
     before = part.snapshot()
     for key, value in data.items():
         setattr(part, key, value)
+    if part.customer_id is None:
+        part.customer = pending_customer()
     part.version += 1
     part.updated_by = actor
     part.full_clean()

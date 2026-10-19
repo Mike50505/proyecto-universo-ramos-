@@ -12,6 +12,11 @@ class PartForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['customer'].required = False
+        self.fields['customer'].empty_label = 'PENDIENTE'
+        self.fields['customer'].help_text = 'Si no selecciona un cliente, se guardará como PENDIENTE.'
+        self.fields['is_sample'].label = 'Pieza pendiente de aprobación'
+        self.fields['is_sample'].help_text = 'Marque si es una pieza nueva pendiente de aprobación para producción regular. Desmarque cuando sea aprobada.'
         self.fields['reference_customer'].label = 'Cliente (segunda columna)'
         self.fields['reference_plant'].label = 'Planta (columna adicional)'
         self.fields['wall_note'].label = 'Pared (texto original, si no es decimal)'

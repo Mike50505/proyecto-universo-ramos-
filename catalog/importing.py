@@ -1,5 +1,7 @@
 import csv
 import io
+import hashlib
+import json
 import unicodedata
 from collections import Counter
 from decimal import Decimal, InvalidOperation
@@ -15,7 +17,7 @@ from .services import create_part, lock_change_stream, update_part
 FIELDS = ['customer', 'destination', 'part_number', 'diameter', 'wall', 'weight', 'box', 'std', 'sheet_color', 'reference_customer', 'reference_plant', 'is_sample']
 LABELS = {'customer': 'CLIENTE', 'destination': 'DESTINO', 'part_number': 'NÚMERO DE PARTE', 'diameter': 'DIÁMETRO', 'wall': 'PARED', 'weight': 'PESO', 'box': 'CAJA', 'std': 'STD.', 'sheet_color': 'HOJA COLOR', 'reference_customer': 'CLIENTE (segunda columna)', 'reference_plant': 'PLANTA'}
 LABELS['wall_note'] = 'PARED (texto original)'
-LABELS['is_sample'] = 'MUESTRA'
+LABELS['is_sample'] = 'PENDIENTE DE APROBACIÓN'
 CATALOGS = {'customer': Customer, 'destination': Destination, 'box': Box, 'sheet_color': SheetColor}
 
 def fold(value):
@@ -50,7 +52,10 @@ def auto_mapping(names):
     for field in FIELDS:
         if field in ('customer', 'reference_customer'):
             continue
-        matches = [i + 1 for i, name in enumerate(names) if fold(name) == fold(LABELS[field])]
+        accepted_labels = {fold(LABELS[field])}
+        if field == 'is_sample':
+            accepted_labels.add('MUESTRA')  # Keep existing workbooks compatible.
+        matches = [i + 1 for i, name in enumerate(names) if fold(name) in accepted_labels]
         if len(matches) == 1:
             mapping[field] = matches[0]
     return mapping
@@ -67,8 +72,8 @@ def parse_rows(job):
         mapping = {key: int(value) for key, value in job.mapping.items() if key in FIELDS and value}
     except (TypeError, ValueError):
         raise ValidationError('El mapeo de columnas no es válido.')
-    if not mapping.get('customer') or not mapping.get('part_number'):
-        raise ValidationError('Mapee Cliente y Número de parte.')
+    if not mapping.get('part_number'):
+        raise ValidationError('Mapee Número de parte.')
     if len(set(mapping.values())) != len(mapping) or any(pos < 1 or pos > 100 for pos in mapping.values()):
         raise ValidationError('Cada campo debe corresponder a una columna distinta y válida.')
     ws = wb[job.sheet]
@@ -102,7 +107,7 @@ def _validate_field(field, value):
             return True
         if fold(value) in ('', 'NO', 'FALSE', '0'):
             return False
-        raise ValidationError('MUESTRA debe indicar Sí/No, True/False, 1/0 o X.')
+        raise ValidationError('PENDIENTE DE APROBACIÓN debe indicar Sí/No, True/False, 1/0 o X.')
     if field in CATALOGS:
         if len(value) > 150:
             raise ValidationError(f'{LABELS[field]} supera 150 caracteres.')
@@ -135,8 +140,8 @@ def evaluate(job):
         item = {'row': number, 'code': raw.get('part_number', ''), 'raw': {field: raw.get(field, '') for field in FIELDS}, 'status': '', 'reason': '', 'before': {}, 'after': {}, 'catalog_new': [], 'version': None}
         if raw.get('__error__'):
             item.update(status='error', reason=raw['__error__'])
-        elif not code or not raw.get('customer'):
-            item.update(status='error', reason='Cliente y Número de parte son obligatorios.')
+        elif not code:
+            item.update(status='error', reason='Número de parte es obligatorio.')
         elif counts[code] > 1:
             item.update(status='duplicate', reason='El código aparece más de una vez en esta hoja; revise las filas antes de importar.')
         else:
@@ -170,6 +175,8 @@ def evaluate(job):
                         old = getattr(existing, field)
                         old_value = old if field == 'is_sample' else str(old) if old is not None else None
                         new_value = value if value != '' or field not in CATALOGS else None
+                        if field == 'customer' and not new_value:
+                            new_value = 'PENDIENTE'
                         if field in ('wall', 'weight') and old is not None and new_value is not None and Decimal(new_value) == old:
                             continue
                         if old_value != new_value:
@@ -180,6 +187,11 @@ def evaluate(job):
                     if changed and job.mode == 'add':
                         item['status'] = 'skipped'
                 else:
+                    if not data.get('customer'):
+                        data['customer'] = 'PENDIENTE'
+                        item['raw']['customer'] = 'PENDIENTE'
+                        if not Customer.objects.filter(name__iexact='PENDIENTE').exists():
+                            item['catalog_new'].append(LABELS['customer'] + ': PENDIENTE')
                     item['after'] = data
                     item['status'] = 'new' if job.mode != 'update' else 'skipped'
             except ValidationError as exc:
@@ -216,6 +228,33 @@ def materialize(values):
 
 def comparable_rows(rows):
     return [{**row, 'catalog_new': sorted(row['catalog_new'])} for row in rows]
+
+
+def preview_revision(job):
+    return hashlib.sha256(json.dumps(job.result, sort_keys=True).encode()).hexdigest()
+
+
+def can_classify(job, row):
+    return row['status'] in ('new', 'update', 'unchanged') and (job.mode != 'add' or row['status'] == 'new')
+
+
+@transaction.atomic
+def set_all_preview_samples(job_id, actor, is_sample, expected_revision):
+    lock_change_stream()
+    job = ImportJob.objects.select_for_update().get(pk=job_id, actor=actor)
+    if job.status != 'preview':
+        raise ValidationError('Solo puede clasificar piezas en una vista previa pendiente.')
+    if preview_revision(job) != expected_revision:
+        raise ValidationError('La vista previa cambió. Recargue antes de guardar.')
+    rows = job.result.get('rows', [])
+    if comparable_rows(rows) != comparable_rows(evaluate(job)):
+        raise ValidationError('El catálogo o el archivo cambió. Genere otra vista previa.')
+    for row in rows:
+        if can_classify(job, row):
+            job.sample_overrides[str(row['row'])] = is_sample
+    job.save(update_fields=['sample_overrides'])
+    preview(job)
+    return job
 
 
 @transaction.atomic
