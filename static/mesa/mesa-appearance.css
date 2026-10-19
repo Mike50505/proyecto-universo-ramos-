@@ -1,0 +1,117 @@
+/* Heiliang's six comfortable palettes, shared by the other MESA applications. */
+@media screen {
+html[data-palette] { color-scheme: light; }
+html[data-palette="slate"], html[data-palette="night"] { color-scheme: dark; }
+html[data-palette="classic"] {
+  --mesa-bg:#f0f5fc; --mesa-surface:#fff; --mesa-surface-soft:#f7f9fc;
+  --mesa-text:#1d1d1f; --mesa-muted:#596577; --mesa-line:#dce3ed;
+  --mesa-blue:#005bb5; --mesa-action:#005bb5; --mesa-accent-soft:#edf4ff;
+  --mesa-chip:#f7f9fc; --mesa-chip-hover:#edf4ff; --mesa-header:rgb(250 250 252 / 92%);
+  --mesa-hero:linear-gradient(110deg,#004b96,#086bc6); --mesa-particle-opacity:.55;
+}
+html[data-palette="pearl"] {
+  --mesa-bg:#e8ebee; --mesa-surface:#f1f3f5; --mesa-surface-soft:#e4e8ed;
+  --mesa-text:#253341; --mesa-muted:#526170; --mesa-line:#c9d0d8;
+  --mesa-blue:#305f8f; --mesa-action:#315f8d; --mesa-accent-soft:#dce5ed;
+  --mesa-chip:#e4e8ed; --mesa-chip-hover:#dce5ed; --mesa-header:rgb(237 240 243 / 96%);
+  --mesa-hero:var(--mesa-surface); --mesa-particle-opacity:.26;
+  --mesa-particle-1:#6f8398; --mesa-particle-2:#8d9eae; --mesa-particle-3:#5d7791;
+}
+html[data-palette="ivory"] {
+  --mesa-bg:#e9e4da; --mesa-surface:#f3efe6; --mesa-surface-soft:#ece7de;
+  --mesa-text:#353b40; --mesa-muted:#62635d; --mesa-line:#d2cabb;
+  --mesa-blue:#40617d; --mesa-action:#3c5b75; --mesa-accent-soft:#e1e5e4;
+  --mesa-chip:#ece7de; --mesa-chip-hover:#e1e5e4; --mesa-header:rgb(238 233 223 / 96%);
+  --mesa-hero:var(--mesa-surface); --mesa-particle-opacity:.25;
+  --mesa-particle-1:#7a8e9d; --mesa-particle-2:#ada38c; --mesa-particle-3:#738591;
+}
+html[data-palette="sage"] {
+  --mesa-bg:#dfe7e2; --mesa-surface:#edf2ee; --mesa-surface-soft:#e2eae5;
+  --mesa-text:#253d35; --mesa-muted:#4c6258; --mesa-line:#c1d0c6;
+  --mesa-blue:#365f64; --mesa-action:#345c69; --mesa-accent-soft:#d7e5e1;
+  --mesa-chip:#e2eae5; --mesa-chip-hover:#d7e5e1; --mesa-header:rgb(230 237 232 / 96%);
+  --mesa-hero:var(--mesa-surface); --mesa-particle-opacity:.25;
+  --mesa-particle-1:#748e83; --mesa-particle-2:#7f9d97; --mesa-particle-3:#5d7d80;
+}
+html[data-palette="slate"] {
+  --mesa-bg:#1b232d; --mesa-surface:#252f3b; --mesa-surface-soft:#2c3846;
+  --mesa-text:#dce3ec; --mesa-muted:#b0bdcc; --mesa-line:#485766;
+  --mesa-blue:#97b9d7; --mesa-action:#355f86; --mesa-accent-soft:#304457;
+  --mesa-chip:#2c3846; --mesa-chip-hover:#304457; --mesa-header:rgb(32 42 52 / 96%);
+  --mesa-hero:var(--mesa-surface); --mesa-particle-opacity:.22;
+  --mesa-particle-1:#91a8bb; --mesa-particle-2:#819dab; --mesa-particle-3:#afc1cf;
+}
+html[data-palette="night"] {
+  --mesa-bg:#000; --mesa-surface:#1c1c1e; --mesa-surface-soft:#242426;
+  --mesa-text:#f5f5f7; --mesa-muted:#aeb8c8; --mesa-line:#343b47;
+  --mesa-blue:#80baff; --mesa-action:#0065c9; --mesa-accent-soft:#172e49;
+  --mesa-chip:#242830; --mesa-chip-hover:#172e49; --mesa-header:rgb(22 22 23 / 94%);
+  --mesa-hero:var(--mesa-surface); --mesa-particle-opacity:.48;
+}
+html[data-palette] body.mesa-suite { background:var(--mesa-bg); color:var(--mesa-text); }
+html[data-palette] body.mesa-suite .particle-background { opacity:var(--mesa-particle-opacity); }
+html[data-palette] body.mesa-suite .mesa-header .mesa-nav :is(a,button) { border:0; background:var(--mesa-chip); }
+html[data-palette] body.mesa-suite .mesa-header .mesa-nav :is(a,button):hover { background:var(--mesa-chip-hover); }
+html[data-palette] body.mesa-suite .mesa-header .mesa-nav :is(.active,[aria-current=page],[aria-selected=true]) { background:var(--mesa-action); color:#fff; }
+html[data-palette] body.mesa-suite :is(.page-heading,.page-header,.inventory-page-header,.mesa-page-heading) {
+  background:var(--mesa-hero); border:1px solid var(--mesa-line); border-radius:20px;
+  box-shadow:0 2px 4px rgb(21 46 82 / 2%),0 12px 32px rgb(21 46 82 / 4%);
+}
+html[data-palette="classic"] body.mesa-suite :is(.page-heading,.page-header,.inventory-page-header,.mesa-page-heading) { border-color:#0758a7; box-shadow:0 12px 30px rgb(0 83 166 / 16%); }
+html[data-palette]:not([data-palette="classic"]) body.mesa-suite :is(.page-heading,.page-header,.inventory-page-header,.mesa-page-heading) { color:var(--mesa-text); }
+html[data-palette]:not([data-palette="classic"]) body.mesa-suite :is(.page-heading,.page-header,.inventory-page-header,.mesa-page-heading) :is(h1,h2,p,.muted,.subtitle,.eyebrow,span:not(.glide-select__label)) { color:var(--mesa-text); }
+html[data-palette]:not([data-palette="classic"]) body.mesa-suite :is(.page-heading,.page-header,.inventory-page-header,.mesa-page-heading) :is(p,.muted,.subtitle) { color:var(--mesa-muted); }
+html[data-palette]:not([data-palette="classic"]) body.mesa-suite :is(.page-heading,.page-header,.inventory-page-header,.mesa-page-heading) .eyebrow { color:var(--mesa-blue); }
+html[data-palette] body.mesa-suite :is(.panel,.card,.table-card,.stat-card,.metric,.inventory-card,.service-card,.auth-panel,.login-card,.operation-card) { border:1px solid var(--mesa-line); border-radius:18px; background:var(--mesa-surface); box-shadow:none; }
+html[data-palette] body.mesa-suite :is(.filters,.form-panel,.detail-panel,.summary-row>div,.empty,.public-portal) { background:var(--mesa-surface); color:var(--mesa-text); border-color:var(--mesa-line); }
+html[data-palette] body.mesa-suite .public-portal { background:var(--mesa-bg); }
+html[data-palette] body.mesa-suite :is(.glide-select,.glide-select__menu) { --gs-surface:var(--mesa-surface); --gs-accent:var(--mesa-blue); --gs-text:var(--mesa-text); --gs-highlight:color-mix(in srgb,var(--mesa-blue) 15%,transparent); }
+html[data-palette] body.mesa-suite :is(.stat-card,.metric,.inventory-stats article) { border-top:1px solid var(--mesa-line); }
+html[data-palette] body.mesa-suite :is(.stat-value,.metric-value,.inventory-stats b) { color:var(--mesa-blue); }
+html[data-palette] body.mesa-suite :is(.service-card,.quick-action):hover { border-color:color-mix(in srgb,var(--mesa-blue) 50%,var(--mesa-line)); background:color-mix(in srgb,var(--mesa-blue) 4%,var(--mesa-surface)); box-shadow:0 8px 22px color-mix(in srgb,var(--mesa-blue) 10%,transparent); }
+html[data-palette] body.mesa-suite :is(.button,.btn,.primary-button,.secondary-button,.pill,.filter-chip,.order-action,.admin-link) { border:0; border-radius:999px; }
+html[data-palette] body.mesa-suite :is(.button.secondary,.button-secondary,.btn-secondary,.secondary-button,.admin-link) { background:var(--mesa-accent-soft); color:var(--mesa-blue); }
+html[data-palette] body.mesa-suite :is(.table-scroll,.table-wrap,.inventory-table) { border-radius:0 0 18px 18px; }
+html[data-palette] body.mesa-suite :is(th,thead th) { background:var(--mesa-surface-soft); color:var(--mesa-muted); }
+html[data-palette] body.mesa-suite :is(a,button,input,select,textarea,[tabindex]):focus-visible { outline:3px solid var(--mesa-blue); outline-offset:3px; }
+html[data-palette] body.mesa-tickets .public-hero { background:var(--mesa-hero); border:1px solid var(--mesa-line); border-radius:20px; }
+html[data-palette="classic"] body.mesa-tickets .public-hero { border-color:#0758a7; }
+html[data-palette]:not([data-palette="classic"]) body.mesa-tickets .public-hero { color:var(--mesa-text); }
+html[data-palette]:not([data-palette="classic"]) body.mesa-tickets .public-hero :is(h1,h1 em,.hero-kicker,.availability) { color:var(--mesa-text); }
+html[data-palette]:not([data-palette="classic"]) body.mesa-tickets .public-hero .hero-copy > p { color:var(--mesa-muted); }
+html[data-palette]:not([data-palette="classic"]) body.mesa-tickets .public-hero .primary-button { background:var(--mesa-action); color:#fff; }
+html[data-palette]:not([data-palette="classic"]) body.mesa-maintenance .topbar .today { color:var(--mesa-muted); }
+/* Direct module access above the operational summary, following Heiliang's home. */
+html body.mesa-suite .mesa-home-modules { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0 0 32px; }
+html body.mesa-suite .mesa-home-module { display:flex; align-items:center; gap:16px; min-height:112px; padding:22px; border:1px solid var(--mesa-line); border-radius:18px; background:linear-gradient(115deg,color-mix(in srgb,var(--mesa-blue) 4%,var(--mesa-surface)),var(--mesa-surface) 68%); color:var(--mesa-text); text-decoration:none; transition:border-color 160ms ease,box-shadow 160ms ease,transform 160ms ease; }
+html body.mesa-suite .mesa-home-module:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--mesa-blue) 50%,var(--mesa-line)); box-shadow:0 8px 22px color-mix(in srgb,var(--mesa-blue) 10%,transparent); }
+html body.mesa-suite .mesa-home-module > span:nth-child(2) { display:grid; gap:5px; min-width:0; flex:1; }
+html body.mesa-suite .mesa-home-module strong { font-size:15px; line-height:1.4; }
+html body.mesa-suite .mesa-home-module small { color:var(--mesa-muted); font-size:12px; line-height:1.5; }
+html body.mesa-suite .mesa-home-module-icon { display:grid; place-items:center; width:44px; height:44px; flex:none; border-radius:14px; background:color-mix(in srgb,var(--mesa-blue) 17%,var(--mesa-surface)); color:var(--mesa-blue); }
+html body.mesa-suite .mesa-home-module-arrow { margin-left:auto; color:var(--mesa-blue); font-size:18px; }
+html body.mesa-suite .mesa-home-section-heading { margin:0 0 14px; }
+html body.mesa-suite .mesa-home-section-heading h2 { margin:0 0 3px; color:var(--mesa-text); }
+html body.mesa-suite .mesa-home-section-heading p { margin:0; color:var(--mesa-muted); font-size:13px; }
+/* One appearance control, with the same names and behavior as Heiliang. */
+html body.mesa-suite .mesa-appearance { position:relative; display:inline-flex; align-items:center; flex:none; }
+html body.mesa-suite .mesa-palette-toggle { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:7px 10px; border:0; border-radius:999px; background:transparent; color:var(--mesa-text); font-size:12px; font-weight:650; cursor:pointer; white-space:nowrap; }
+html body.mesa-suite .mesa-palette-toggle:hover { background:var(--mesa-chip-hover); }
+html body.mesa-suite .mesa-palette-toggle svg { width:18px; height:18px; flex:none; }
+html body.mesa-suite .mesa-palette-panel[hidden] { display:none; }
+html body.mesa-suite .mesa-palette-panel { position:fixed; z-index:210; width:min(320px,calc(100vw - 32px)); max-height:calc(100dvh - 84px); overflow:auto; padding:22px; border:1px solid var(--mesa-line); border-radius:18px; background:var(--mesa-surface); color:var(--mesa-text); box-shadow:0 12px 40px rgb(0 0 0 / 16%); text-align:left; }
+html body.mesa-suite .mesa-palette-panel h2 { margin:0; font-size:19px; line-height:1.3; color:var(--mesa-text); }
+html body.mesa-suite .mesa-palette-panel p { margin:8px 0 18px; color:var(--mesa-muted); font-size:12px; line-height:1.5; }
+html body.mesa-suite .mesa-palette-panel label { display:block; margin-bottom:7px; font-size:12px; font-weight:600; }
+html body.mesa-suite .mesa-palette-panel select { width:100%; }
+html body.mesa-suite .mesa-palette-preview { display:flex; align-items:center; justify-content:space-between; gap:24px; min-height:90px; margin-top:18px; padding:16px; border:1px solid var(--mesa-line); border-radius:12px; background:var(--mesa-bg); }
+html body.mesa-suite .mesa-palette-preview span { display:block; width:70%; padding:12px; border-radius:8px; background:var(--mesa-surface); }
+html body.mesa-suite .mesa-palette-preview i { display:block; width:80%; height:3px; margin:7px 0; border-radius:2px; background:var(--mesa-muted); }
+html body.mesa-suite .mesa-palette-preview i:first-child { width:60%; height:5px; background:var(--mesa-text); }
+html body.mesa-suite .mesa-palette-preview b { width:36px; height:36px; border-radius:50%; background:var(--mesa-action); }
+html body.mesa-suite .mesa-palette-panel small { display:block; padding-top:12px; border-top:1px solid var(--mesa-line); color:var(--mesa-muted); font-size:10px; line-height:1.5; }
+@media(max-width:1100px) { html body.mesa-suite .mesa-palette-toggle strong { display:none; } }
+@media(max-width:800px) { html body.mesa-suite .mesa-palette-panel { padding:20px; } }
+@media(max-width:900px) { html body.mesa-suite .mesa-home-modules { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:620px) { html body.mesa-suite .mesa-home-modules { grid-template-columns:minmax(0,1fr); } }
+}

@@ -17,3 +17,12 @@ def import_job_status(value):
 def import_label(value):
     from catalog.importing import LABELS
     return LABELS.get(value, value)
+
+
+@register.filter
+def import_value(value):
+    if value is True:
+        return 'Sí'
+    if value is False:
+        return 'No'
+    return '—' if value is None or value == '' else value

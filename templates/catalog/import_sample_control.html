@@ -1,0 +1,12 @@
+{% if job.status == 'preview' and row.status != 'error' and row.status != 'duplicate' and row.status != 'skipped' %}
+  {% if job.mode != 'add' or row.status == 'new' %}
+  <form method="post" class="preview-sample-control" data-preview-sample>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="set_sample">
+    <input type="hidden" name="row" value="{{ row.row }}">
+    <input type="hidden" name="expected_sample" value="{{ row.is_sample|yesno:'true,false' }}">
+    <label for="sample-row-{{ row.row }}"><input id="sample-row-{{ row.row }}" type="checkbox" name="is_sample" {% if row.is_sample %}checked{% endif %}> Muestra<span class="sr-only">: {{ row.code }}</span></label>
+    <button class="button secondary" type="submit">Guardar</button>
+  </form>
+  {% else %}<span class="muted">{% if row.is_sample %}Sí{% else %}No{% endif %} · Solo altas</span>{% endif %}
+{% else %}<span class="muted">{% if row.is_sample %}Sí{% else %}No{% endif %}</span>{% endif %}

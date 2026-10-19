@@ -45,10 +45,18 @@ html[data-theme="dark"] .nav nav a{background:#2c2c2e;color:#f5f5f7}
 html[data-theme="dark"] .nav nav a:hover{background:#424244;color:#f5f5f7}
 html[data-theme="dark"] .nav nav a[aria-current="page"],html[data-theme="dark"] .nav nav a[aria-current="page"]:hover{background:#0a84ff;color:#fff}
 html[data-theme="dark"] .text-button{background:color-mix(in srgb,var(--blue) 17%,#1c1c1e);border-color:color-mix(in srgb,var(--blue) 32%,#38383a)}
-/* Consistent capsule controls throughout the suite. */
-.button,button,.page-button,.text-button,.glide-select__trigger{border:0!important;border-radius:999px;transform-origin:center;transition:background-color 120ms ease,color 120ms ease,box-shadow 120ms ease,transform 190ms cubic-bezier(.22,1.25,.36,1),margin 190ms cubic-bezier(.22,1.25,.36,1)}
-.button:not(:disabled):not(.selected):hover,button:not(:disabled):not([aria-expanded="true"]):not([aria-pressed="true"]):hover,.page-button:not(:disabled):not(.current):not(.disabled):hover,.text-button:not(:disabled):hover,.glide-select__trigger:not(:disabled):hover{background:#e7e7ec!important;color:var(--text)!important;box-shadow:none}
-.button:not(:disabled):not(.selected):hover,button:not(:disabled):not([aria-expanded="true"]):not([aria-pressed="true"]):hover,.page-button:not(:disabled):not(.current):not(.disabled):hover,.text-button:not(:disabled):hover,.glide-select__trigger:not(:disabled):not([aria-expanded="true"]):hover{transform:scale(1.015)}
-.button.selected,.page-button.current,button[aria-pressed="true"],.glide-select__trigger[aria-expanded="true"]{margin-inline:6px;transform:scale(1.14)}
-html[data-theme="dark"] .button:not(:disabled):not(.selected):hover,html[data-theme="dark"] button:not(:disabled):not([aria-expanded="true"]):not([aria-pressed="true"]):hover,html[data-theme="dark"] .page-button:not(:disabled):not(.current):not(.disabled):hover,html[data-theme="dark"] .text-button:not(:disabled):hover,html[data-theme="dark"] .glide-select__trigger:not(:disabled):hover{background:#424244!important;color:#f5f5f7!important}
-@media(prefers-reduced-motion:reduce){.nav nav a,.button,button,.page-button,.text-button,.glide-select__trigger{transition:none!important;animation:none!important}.nav nav a[aria-current="page"],.button.selected,.page-button.current,button[aria-pressed="true"],.glide-select__trigger[aria-expanded="true"]{margin-inline:0;transform:none!important}.button:hover,button:hover,.page-button:hover,.text-button:hover,.jelly-pressed{transform:none!important}}
+/* Capsule controls retain their semantic colors and stable bounds. */
+.button,button,.page-button,.text-button,.glide-select__trigger{border-radius:999px;transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 160ms ease,transform 160ms ease}
+.glide-select__trigger{transform:none;margin-inline:0}
+.glide-select__trigger:active:not(:disabled){transform:none}
+.glide-select__trigger:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.glide-select__trigger[aria-invalid="true"]{border-color:var(--danger);box-shadow:0 0 0 2px color-mix(in srgb,var(--danger) 20%,transparent)}
+.glide-select__trigger:not(:disabled):hover{background:color-mix(in srgb,var(--blue) 5%,var(--gs-surface))}
+.glide-select__menu{width:max(240px,100%)}
+.glide-select__option{height:auto;min-height:var(--gs-row);padding-block:8px}
+.glide-select__name{white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+.button:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
+html[data-theme="dark"]{--action-blue:#006bd6;--action-blue-hover:#005bb8}
+html[data-theme="dark"] .button.primary,html[data-theme="dark"] .view-switch .button.selected,html[data-theme="dark"] .page-button.current,html[data-theme="dark"] .nav nav a[aria-current="page"]{background:var(--action-blue);border-color:var(--action-blue);color:#fff}
+html[data-theme="dark"] .button.primary:hover,html[data-theme="dark"] .view-switch .button.selected:hover,html[data-theme="dark"] .page-button.current:hover,html[data-theme="dark"] .nav nav a[aria-current="page"]:hover{background:var(--action-blue-hover);color:#fff}
+@media(prefers-reduced-motion:reduce){.nav nav a,.button,button,.page-button,.text-button,.glide-select__trigger{transition:none!important;animation:none!important;transform:none!important}.nav nav a[aria-current="page"]{margin-inline:0}}

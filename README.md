@@ -30,7 +30,19 @@ La guía de MESA declara que el número de parte no se repite en el catálogo. P
 
 `diameter` es texto para preservar expresiones como `A - 3/8`. `wall` y `weight` son decimales sin unidad inferida. Cuatro filas de `Sheet1` contienen `PARED = NO`: se conserva ese texto en `wall_note`, mientras que `wall` queda nulo; no se interpreta su significado. `std` es texto sin significado supuesto. `NULL` expresa dato ausente y es diferente de cero. Cliente, destino, caja y hoja color son catálogos; no se deduce ninguna asociación entre cliente, destino y planta. No hay borrado físico desde la interfaz.
 
-## Roles
+## Piezas de muestra y revisión de importaciones
+
+La casilla **Pieza de muestra** permite clasificar una pieza al crearla o editarla. La etiqueta **(MUESTRA)** aparece junto al número, sin cambiar el código ni su UUID. Desmarcarla permite pasar la pieza a normal, registrando el cambio en el historial. Las piezas anteriores a esta función quedan como normales.
+
+En la **vista previa de importación**, cada fila aplicable tiene su propia casilla **Muestra** junto al número. Marcarla o desmarcarla guarda la selección en la importación pendiente y recalcula los cambios; no modifica el catálogo hasta confirmar. Las selecciones se conservan al cambiar de filtro o página y prevalecen sobre la columna del Excel. Sin JavaScript se guardan con el botón de la fila. Las filas omitidas, duplicadas o con errores y las importaciones confirmadas no se pueden clasificar desde esta pantalla. Volver a preparar la importación restablece las selecciones manuales para evitar aplicarlas a otra hoja o mapeo.
+
+La columna opcional **MUESTRA** de la plantilla admite Sí/No, True/False, 1/0 o X. Sin mapearla se conserva la clasificación de piezas existentes; las nuevas quedan como normales. Una celda vacía conserva el valor existente salvo que se active sobrescribir vacíos. El CSV incluye esta columna.
+
+La vista previa permite filtrar todas las filas, nuevas, con cambios, nuevas y con cambios, errores y duplicados, sin cambios u omitidas. El filtro se aplica antes de paginar y solo afecta lo visible: la confirmación procesa la importación completa y los errores de filas ocultas siguen bloqueándola. Las vistas previas generadas antes de este cambio deben regenerarse antes de confirmar.
+
+Un administrador decide qué apps reciben muestras desde **Integraciones → Permitir muestras → Guardar**. Use una credencial por app. Las existentes conservan su permiso inicial y las nuevas permiten elegirlo al crearlas. La API impone el permiso en listas, búsqueda exacta y consulta por UUID. Los eventos de muestras excluidas son marcadores de retirada sin sus datos. Al cambiar el permiso, la API exige reconstruir el catálogo local; el consumidor de ejemplo implementa ese flujo. Las apps con caché propia deben admitirlo para reflejar el cambio en su próxima sincronización. Consulte `docs/API.md`. La marca de muestra es independiente de la activación de la pieza.
+
+## Roles de usuario
 
 `Administrador` gestiona todo, incluidos usuarios y claves de integración. `Editor` gestiona piezas, catálogos relacionados e importaciones. `Consulta` solo lee el catálogo. Un superusuario equivale a Administrador. Los permisos se comprueban en las vistas, no solo en el menú.
 

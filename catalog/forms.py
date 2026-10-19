@@ -7,7 +7,7 @@ class PartForm(forms.ModelForm):
 
     class Meta:
         model = Part
-        fields = ["customer", "destination", "part_number", "diameter", "wall", "wall_note", "weight", "box", "std", "sheet_color", "reference_customer", "reference_plant"]
+        fields = ["customer", "destination", "part_number", "is_sample", "diameter", "wall", "wall_note", "weight", "box", "std", "sheet_color", "reference_customer", "reference_plant"]
         labels = {"customer": "Cliente", "destination": "Destino", "part_number": "Número de parte", "diameter": "Diámetro", "wall": "Pared", "weight": "Peso", "box": "Caja", "std": "STD.", "sheet_color": "Hoja color"}
 
     def __init__(self, *args, **kwargs):

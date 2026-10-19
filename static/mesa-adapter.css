@@ -1,0 +1,16 @@
+@media screen {
+html body.mesa-universe .mesa-header .mesa-header-inner { width:100%; max-width:1440px; margin:auto; display:flex; flex-wrap:wrap; align-items:center; gap:18px; padding:0; }
+html body.mesa-universe .mesa-header { padding-block:10px; }
+html body.mesa-universe .mesa-header .mesa-header-inner { min-height:44px; }
+html body.mesa-universe .particle-background { opacity:.85; }
+html[data-theme="dark"] body.mesa-universe .particle-background { opacity:.72; }
+html body.mesa-universe .mesa-header .account { gap:8px; }
+html body.mesa-universe .mesa-header .theme-toggle { min-width:36px; width:36px; height:36px; }
+html body.mesa-universe .suite-footer { background:transparent; color:var(--mesa-muted); border-color:var(--mesa-line); }
+html body.mesa-universe .suite-footer .wrap { display:flex; justify-content:center; gap:12px; padding:22px; }
+html body.mesa-universe .table-scroll { background:var(--mesa-surface); border:1px solid var(--mesa-line); border-radius:22px; }
+html body.mesa-universe .filter-bar { background:var(--mesa-surface); border-color:var(--mesa-line); border-radius:22px; }
+html body.mesa-universe .mesa-login-intro .login-title { color:var(--mesa-blue); }
+@media(max-width:800px){html body.mesa-universe .mesa-header .mesa-header-inner{gap:10px}html body.mesa-universe .mesa-account{margin-left:auto}}
+
+}

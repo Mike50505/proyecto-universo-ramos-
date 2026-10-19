@@ -17,6 +17,6 @@ const applyTheme = theme => {
 applyTheme(document.documentElement.dataset.theme || 'light');
 themeToggle?.addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('universo-theme', next);
+  localStorage.setItem('mesa-theme', next);
   applyTheme(next);
 });

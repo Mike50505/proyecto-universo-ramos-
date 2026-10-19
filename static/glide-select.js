@@ -8,10 +8,13 @@
     if (select.dataset.glideReady) return;
     select.dataset.glideReady = 'true';
     select.classList.add('glide-native-select');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
     const options = [...select.options];
     const selectedIndex = () => options.findIndex(option => option.value === select.value);
     const field = select.closest('.field');
-    const label = (field?.querySelector('label')?.textContent || select.getAttribute('aria-label') || 'Seleccionar opción').trim();
+    const nativeLabel = select.labels?.[0];
+    const label = (nativeLabel?.textContent || field?.querySelector('label')?.textContent || select.getAttribute('aria-label') || 'Seleccionar opción').trim();
     const root = document.createElement('div');
     root.className = 'glide-select';
     root.dataset.size = 'md';
@@ -24,9 +27,7 @@
     trigger.setAttribute('aria-haspopup', 'listbox');
     trigger.setAttribute('aria-expanded', 'false');
     trigger.setAttribute('aria-label', label);
-    if (field?.querySelector('label[for="' + select.id + '"]')) {
-      field.querySelector('label[for="' + select.id + '"]').htmlFor = trigger.id;
-    }
+    if (nativeLabel) nativeLabel.htmlFor = trigger.id;
     const listId = `glide-select-list-${selectNumber}`;
     trigger.setAttribute('aria-controls', listId);
     trigger.disabled = select.disabled;
@@ -41,6 +42,7 @@
     const menu = document.createElement('div');
     menu.className = 'glide-select__menu';
     menu.dataset.state = 'closed';
+    menu.setAttribute('aria-hidden', 'true');
     menu.dataset.side = 'bottom';
     menu.dataset.align = 'left';
     const list = document.createElement('div');
@@ -72,7 +74,15 @@
       return row;
     });
     menu.append(list);
-    root.append(trigger, menu);
+    const validation = document.createElement('small');
+    validation.id = `glide-select-error-${selectNumber}`;
+    validation.className = 'error-text';
+    validation.hidden = true;
+    root.append(trigger, menu, validation);
+    const descriptionIds = [...(field?.querySelectorAll('small') || [])].map((element, index) => {
+      if (!element.id) element.id = `glide-select-help-${selectNumber}-${index}`;
+      return element.id;
+    });
     select.insertAdjacentElement('afterend', root);
 
     let open = false;
@@ -80,11 +90,24 @@
     let closeTimer;
     let typeahead = '';
     let typeaheadTimer;
+    const syncAccessibility = () => {
+      trigger.setAttribute('aria-required', String(select.required));
+      for (const name of ['aria-invalid', 'aria-describedby', 'aria-errormessage']) {
+        if (select.hasAttribute(name)) trigger.setAttribute(name, select.getAttribute(name));
+        else trigger.removeAttribute(name);
+      }
+      const descriptions = [select.getAttribute('aria-describedby'), ...descriptionIds, !validation.hidden ? validation.id : ''].filter(Boolean);
+      if (descriptions.length) trigger.setAttribute('aria-describedby', descriptions.join(' '));
+      if (!validation.hidden) trigger.setAttribute('aria-invalid', 'true');
+    };
     const step = 38;
     const update = () => {
+      if (select.validity.valid) validation.hidden = true;
+      syncAccessibility();
       const index = selectedIndex();
       selectedLabel.textContent = index >= 0 ? options[index].text : 'Seleccionar…';
-      selectedLabel.toggleAttribute('data-empty', index < 0);
+      selectedLabel.toggleAttribute('data-empty', index < 0 || select.value === '');
+      trigger.title = selectedLabel.textContent;
       rows.forEach((row, rowIndex) => {
         const isSelected = rowIndex === index;
         row.setAttribute('aria-selected', String(isSelected));
@@ -103,7 +126,8 @@
       }
       if (!rows[index]) return;
       trigger.setAttribute('aria-activedescendant', rows[index].id);
-      pill.style.transform = `translateY(${index * step}px)`;
+      pill.style.height = `${rows[index].offsetHeight}px`;
+      pill.style.transform = `translateY(${rows[index].offsetTop}px)`;
       pill.style.opacity = '1';
       rows[index].scrollIntoView({ block: 'nearest' });
     };
@@ -112,6 +136,7 @@
       open = false;
       trigger.setAttribute('aria-expanded', 'false');
       menu.dataset.state = 'closed';
+      menu.setAttribute('aria-hidden', 'true');
       setActive(null);
       clearTimeout(closeTimer);
       if (immediate) menu.remove();
@@ -135,14 +160,16 @@
       root.append(menu);
       trigger.setAttribute('aria-expanded', 'true');
       const rect = root.getBoundingClientRect();
-      const estimated = Math.min(options.length * step + 10, 300);
+      const estimated = menu.offsetHeight;
       const side = rect.bottom + estimated + 6 > window.innerHeight && rect.top > estimated ? 'top' : 'bottom';
       menu.dataset.side = side;
-      menu.dataset.align = rect.right + 190 > window.innerWidth ? 'right' : 'left';
+      menu.dataset.align = rect.left + menu.offsetWidth > window.innerWidth ? 'right' : 'left';
       const index = selectedIndex();
       setActive(index >= 0 ? index : viaKeyboard ? 0 : null);
       requestAnimationFrame(() => {
+        if (!open) return;
         menu.dataset.state = 'open';
+        menu.removeAttribute('aria-hidden');
       });
     };
     const onKeyDown = event => {
@@ -200,6 +227,15 @@
     document.addEventListener('pointerdown', event => {
       if (open && !root.contains(event.target)) close(false);
     }, true);
+    select.addEventListener('invalid', event => {
+      event.preventDefault();
+      validation.textContent = select.validationMessage;
+      validation.hidden = false;
+      syncAccessibility();
+      trigger.focus({ preventScroll: false });
+      openMenu(true);
+    });
+    new MutationObserver(update).observe(select, { attributes: true, attributeFilter: ['disabled', 'required', 'aria-invalid', 'aria-describedby', 'aria-errormessage'] });
     select.addEventListener('change', update);
     select.form?.addEventListener('reset', () => window.setTimeout(update, 0));
     update();

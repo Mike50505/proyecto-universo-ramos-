@@ -18,6 +18,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         part_number: {type: string}
+        is_sample: {type: boolean, description: Pieza de muestra pendiente de autorización}
         customer: {type: string}
         destination: {type: string, nullable: true}
         diameter: {type: string}
@@ -40,7 +41,7 @@ components:
 paths:
   /bootstrap/:
     get:
-      summary: Instrucciones y cursor para carga inicial
+      summary: Política de muestras, URL versionada y cursor para reconstrucción del catálogo local
       responses:
         '200': {description: Datos de arranque}
         '401': {description: Sin credencial válida}
@@ -51,16 +52,20 @@ paths:
         - {name: q, in: query, schema: {type: string}}
         - {name: customer, in: query, schema: {type: string}}
         - {name: active, in: query, schema: {type: boolean}}
+        - {name: is_sample, in: query, description: Omitir para ambos tipos; false excluye muestras, schema: {type: boolean}}
+        - {name: policy_version, in: query, description: Versión entregada por bootstrap; 409 si cambió, schema: {type: integer}}
         - {name: page, in: query, schema: {type: integer}}
         - {name: page_size, in: query, schema: {type: integer, maximum: 200}}
       responses:
         '200': {description: Página con count, next, previous y results}
+        '409': {description: resync_required; reconstruir catálogo local desde bootstrap}
         '401': {description: Sin credencial válida}
   /parts/exact/:
     get:
       summary: Busca un código exacto
       parameters:
         - {name: code, in: query, required: true, schema: {type: string}}
+        - {name: is_sample, in: query, schema: {type: boolean}}
         - {name: customer, in: query, schema: {type: string}}
       responses:
         '200': {description: count, multiple y results}
@@ -70,6 +75,7 @@ paths:
       summary: Consulta por UUID, incluidas piezas inactivas
       parameters:
         - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: is_sample, in: query, schema: {type: boolean}}
       responses:
         '200': {description: Pieza, content: {application/json: {schema: {$ref: '#/components/schemas/Part'}}}}
         '404': {description: Pieza no encontrada}
@@ -80,10 +86,11 @@ paths:
         '200': {description: Clientes, destinos, cajas y colores}
   /changes/:
     get:
-      summary: Cambios incrementales con cursor opaco
+      summary: Cambios incrementales y marcadores excluded para retirar piezas no autorizadas
       parameters:
         - {name: cursor, in: query, schema: {type: string}}
         - {name: limit, in: query, schema: {type: integer, maximum: 200}}
       responses:
         '200': {description: Eventos, next_cursor y has_more}
         '400': {description: Cursor o límite inválido}
+        '409': {description: resync_required; cambió el permiso de muestras y debe reconstruirse el catálogo local}

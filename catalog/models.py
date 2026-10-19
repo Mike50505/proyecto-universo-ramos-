@@ -56,6 +56,7 @@ class Part(models.Model):
     reference_plant = models.CharField(max_length=150, blank=True)
     active = models.BooleanField(default=True)
     version = models.PositiveIntegerField(default=1)
+    is_sample = models.BooleanField(default=False, verbose_name="Pieza de muestra", help_text="Marque si esta pieza es una muestra pendiente de autorización.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="created_parts")
@@ -83,7 +84,7 @@ class Part(models.Model):
 
     def snapshot(self):
         data = {}
-        for field in ("id", "customer_id", "destination_id", "part_number", "diameter", "wall", "wall_note", "weight", "box_id", "std", "sheet_color_id", "reference_customer", "reference_plant", "active", "version"):
+        for field in ("id", "customer_id", "destination_id", "part_number", "diameter", "wall", "wall_note", "weight", "box_id", "std", "sheet_color_id", "reference_customer", "reference_plant", "active", "version", "is_sample"):
             value = getattr(self, field)
             data[field] = str(value) if isinstance(value, (uuid.UUID, Decimal)) else value
         data["updated_at"] = self.updated_at.isoformat() if self.updated_at else None
@@ -114,6 +115,7 @@ class ImportJob(models.Model):
     file = models.FileField(upload_to="imports/%Y/%m/")
     sheet = models.CharField(max_length=120, blank=True)
     mapping = models.JSONField(default=dict)
+    sample_overrides = models.JSONField(default=dict, blank=True)
     mode = models.CharField(max_length=16, choices=[("add", "Solo agregar nuevas"), ("update", "Actualizar existentes"), ("both", "Agregar y actualizar")], default="both")
     clear_blanks = models.BooleanField(default=False)
     status = models.CharField(max_length=16, default="uploaded")
@@ -124,13 +126,15 @@ class Integration(models.Model):
     key_prefix = models.CharField(max_length=16, unique=True)
     key_hash = models.CharField(max_length=64)
     active = models.BooleanField(default=True)
+    include_samples = models.BooleanField(default=True)
+    policy_version = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
 
     @classmethod
-    def create_key(cls, name):
+    def create_key(cls, name, include_samples=True):
         prefix = secrets.token_hex(6)
         secret = secrets.token_urlsafe(32)
         token = f"ur_{prefix}_{secret}"
-        integration = cls.objects.create(name=name, key_prefix=prefix, key_hash=hashlib.sha256(token.encode()).hexdigest())
+        integration = cls.objects.create(name=name, key_prefix=prefix, key_hash=hashlib.sha256(token.encode()).hexdigest(), include_samples=include_samples)
         return integration, token

@@ -12,9 +12,10 @@ from openpyxl import Workbook, load_workbook
 from .models import Box, Customer, Destination, ImportJob, Part, SheetColor, normalize_code
 from .services import create_part, lock_change_stream, update_part
 
-FIELDS = ['customer', 'destination', 'part_number', 'diameter', 'wall', 'weight', 'box', 'std', 'sheet_color', 'reference_customer', 'reference_plant']
+FIELDS = ['customer', 'destination', 'part_number', 'diameter', 'wall', 'weight', 'box', 'std', 'sheet_color', 'reference_customer', 'reference_plant', 'is_sample']
 LABELS = {'customer': 'CLIENTE', 'destination': 'DESTINO', 'part_number': 'NÚMERO DE PARTE', 'diameter': 'DIÁMETRO', 'wall': 'PARED', 'weight': 'PESO', 'box': 'CAJA', 'std': 'STD.', 'sheet_color': 'HOJA COLOR', 'reference_customer': 'CLIENTE (segunda columna)', 'reference_plant': 'PLANTA'}
 LABELS['wall_note'] = 'PARED (texto original)'
+LABELS['is_sample'] = 'MUESTRA'
 CATALOGS = {'customer': Customer, 'destination': Destination, 'box': Box, 'sheet_color': SheetColor}
 
 def fold(value):
@@ -96,6 +97,12 @@ def parse_rows(job):
     return result
 
 def _validate_field(field, value):
+    if field == 'is_sample':
+        if fold(value) in ('SI', 'TRUE', '1', 'X'):
+            return True
+        if fold(value) in ('', 'NO', 'FALSE', '0'):
+            return False
+        raise ValidationError('MUESTRA debe indicar Sí/No, True/False, 1/0 o X.')
     if field in CATALOGS:
         if len(value) > 150:
             raise ValidationError(f'{LABELS[field]} supera 150 caracteres.')
@@ -122,6 +129,8 @@ def evaluate(job):
     counts = Counter(normalize_code(raw.get('part_number')) for _, raw in rows if raw.get('part_number'))
     output = []
     for number, raw in rows:
+        if str(number) in job.sample_overrides:
+            raw['is_sample'] = 'Sí' if job.sample_overrides[str(number)] else 'No'
         code = normalize_code(raw.get('part_number'))
         item = {'row': number, 'code': raw.get('part_number', ''), 'raw': {field: raw.get(field, '') for field in FIELDS}, 'status': '', 'reason': '', 'before': {}, 'after': {}, 'catalog_new': [], 'version': None}
         if raw.get('__error__'):
@@ -148,6 +157,10 @@ def evaluate(job):
                     if field == 'wall':
                         data['wall_note'] = value if clean is None and value else ''
                 existing = Part.objects.select_related(*CATALOGS.keys()).filter(normalized_number=code).first()
+                sample_value = data.get('is_sample', False)
+                if existing and (not raw.get('is_sample') and not job.clear_blanks or 'is_sample' not in data):
+                    sample_value = existing.is_sample
+                item['is_sample'] = sample_value
                 if existing:
                     item['version'] = existing.version
                     changed, before = {}, {}
@@ -155,7 +168,7 @@ def evaluate(job):
                         if not raw.get('wall' if field == 'wall_note' else field) and not job.clear_blanks:
                             continue
                         old = getattr(existing, field)
-                        old_value = str(old) if old is not None else None
+                        old_value = old if field == 'is_sample' else str(old) if old is not None else None
                         new_value = value if value != '' or field not in CATALOGS else None
                         if field in ('wall', 'weight') and old is not None and new_value is not None and Decimal(new_value) == old:
                             continue
@@ -200,6 +213,30 @@ def materialize(values):
             data[field] = value
     return data
 
+
+def comparable_rows(rows):
+    return [{**row, 'catalog_new': sorted(row['catalog_new'])} for row in rows]
+
+
+@transaction.atomic
+def set_preview_sample(job_id, actor, row_number, is_sample, expected_sample):
+    lock_change_stream()
+    job = ImportJob.objects.select_for_update().get(pk=job_id, actor=actor)
+    if job.status != 'preview':
+        raise ValidationError('Solo puede clasificar piezas en una vista previa pendiente.')
+    rows = job.result.get('rows', [])
+    row = next((row for row in rows if row['row'] == row_number), None)
+    if row is None or row['status'] not in ('new', 'update', 'unchanged') or (job.mode == 'add' and row['status'] != 'new'):
+        raise ValidationError('Esta fila no se puede clasificar con el modo de importación actual. Revise sus errores o cambie el modo.')
+    if row.get('is_sample', False) != expected_sample:
+        raise ValidationError('La clasificación cambió desde que abrió esta página. Recargue antes de guardar.')
+    if comparable_rows(rows) != comparable_rows(evaluate(job)):
+        raise ValidationError('El catálogo o el archivo cambió después de la vista previa. Genere otra vista previa.')
+    job.sample_overrides[str(row_number)] = is_sample
+    job.save(update_fields=['sample_overrides'])
+    preview(job)
+    return job
+
 @transaction.atomic
 def confirm(job_id, actor):
     lock_change_stream()
@@ -212,8 +249,7 @@ def confirm(job_id, actor):
     new = evaluate(job)
     # Earlier previews may have recorded newly created catalogs in JSON key order.
     # Their order has no meaning, but PostgreSQL can reorder mapping keys.
-    comparable = lambda rows: [{**row, 'catalog_new': sorted(row['catalog_new'])} for row in rows]
-    if comparable(old) != comparable(new):
+    if comparable_rows(old) != comparable_rows(new):
         raise ValidationError('El catálogo o el archivo cambió después de la vista previa. Genere otra vista previa.')
     if any(row['status'] in ('duplicate', 'error') for row in new):
         raise ValidationError('Resuelva los duplicados y errores antes de confirmar.')
