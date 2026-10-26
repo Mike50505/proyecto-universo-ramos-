@@ -52,9 +52,9 @@ def export_parts(request):
     response['Content-Disposition'] = 'attachment; filename="universo-ramos.csv"'
     response.write('\ufeff')
     writer = csv.writer(response)
-    writer.writerow(['UUID', 'Cliente', 'Destino', 'Número de parte', 'Diámetro', 'Pared', 'Peso', 'Caja', 'STD.', 'Hoja color', 'Cliente (segunda columna)', 'Planta', 'Activo', 'Versión', 'PENDIENTE DE APROBACIÓN'])
+    writer.writerow(['UUID', 'Cliente', 'Destino', 'Número de parte', 'Diámetro', 'Pared', 'Peso', 'Unidad del peso', 'Caja', 'STD.', 'Hoja color', 'Cliente (segunda columna)', 'Planta', 'Activo', 'Versión', 'PENDIENTE DE APROBACIÓN'])
     for part in qs.iterator():
-        writer.writerow([part.id, part.customer, part.destination or '', part.part_number, part.diameter, part.wall_note or (part.wall if part.wall is not None else ''), part.weight if part.weight is not None else '', part.box or '', part.std, part.sheet_color or '', part.reference_customer, part.reference_plant, part.active, part.version, 'Sí' if part.is_sample else 'No'])
+        writer.writerow([part.id, part.customer, part.destination or '', part.part_number, part.diameter, part.wall_note or (part.wall if part.wall is not None else ''), part.weight if part.weight is not None else '', part.weight_unit, part.box or '', part.std, part.sheet_color or '', part.reference_customer, part.reference_plant, part.active, part.version, 'Sí' if part.is_sample else 'No'])
     return response
 
 @login_required

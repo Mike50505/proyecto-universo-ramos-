@@ -40,6 +40,7 @@ class SheetColor(NamedValue):
         constraints = [models.UniqueConstraint(Lower('name'), name='sheetcolor_name_ci_unique')]
 
 class Part(models.Model):
+    WEIGHT_UNITS = [('kg', 'Kilogramos (kg)'), ('g', 'Gramos (g)')]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     destination = models.ForeignKey(Destination, on_delete=models.PROTECT, blank=True, null=True)
@@ -49,6 +50,7 @@ class Part(models.Model):
     wall = models.DecimalField(max_digits=14, decimal_places=6, blank=True, null=True)
     wall_note = models.CharField(max_length=120, blank=True)
     weight = models.DecimalField(max_digits=14, decimal_places=6, blank=True, null=True)
+    weight_unit = models.CharField(max_length=2, choices=WEIGHT_UNITS, blank=True, default='')
     box = models.ForeignKey(Box, on_delete=models.PROTECT, blank=True, null=True)
     std = models.CharField(max_length=120, blank=True)
     sheet_color = models.ForeignKey(SheetColor, on_delete=models.PROTECT, blank=True, null=True)
@@ -84,7 +86,7 @@ class Part(models.Model):
 
     def snapshot(self):
         data = {}
-        for field in ("id", "customer_id", "destination_id", "part_number", "diameter", "wall", "wall_note", "weight", "box_id", "std", "sheet_color_id", "reference_customer", "reference_plant", "active", "version", "is_sample"):
+        for field in ("id", "customer_id", "destination_id", "part_number", "diameter", "wall", "wall_note", "weight", "weight_unit", "box_id", "std", "sheet_color_id", "reference_customer", "reference_plant", "active", "version", "is_sample"):
             value = getattr(self, field)
             data[field] = str(value) if isinstance(value, (uuid.UUID, Decimal)) else value
         data["updated_at"] = self.updated_at.isoformat() if self.updated_at else None

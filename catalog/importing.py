@@ -14,8 +14,8 @@ from openpyxl import Workbook, load_workbook
 from .models import Box, Customer, Destination, ImportJob, Part, SheetColor, normalize_code
 from .services import create_part, lock_change_stream, update_part
 
-FIELDS = ['customer', 'destination', 'part_number', 'diameter', 'wall', 'weight', 'box', 'std', 'sheet_color', 'reference_customer', 'reference_plant', 'is_sample']
-LABELS = {'customer': 'CLIENTE', 'destination': 'DESTINO', 'part_number': 'NÚMERO DE PARTE', 'diameter': 'DIÁMETRO', 'wall': 'PARED', 'weight': 'PESO', 'box': 'CAJA', 'std': 'STD.', 'sheet_color': 'HOJA COLOR', 'reference_customer': 'CLIENTE (segunda columna)', 'reference_plant': 'PLANTA'}
+FIELDS = ['customer', 'destination', 'part_number', 'diameter', 'wall', 'weight', 'weight_unit', 'box', 'std', 'sheet_color', 'reference_customer', 'reference_plant', 'is_sample']
+LABELS = {'customer': 'CLIENTE', 'destination': 'DESTINO', 'part_number': 'NÚMERO DE PARTE', 'diameter': 'DIÁMETRO', 'wall': 'PARED', 'weight': 'PESO', 'weight_unit': 'UNIDAD DEL PESO (kg/g)', 'box': 'CAJA', 'std': 'STD.', 'sheet_color': 'HOJA COLOR', 'reference_customer': 'CLIENTE (segunda columna)', 'reference_plant': 'PLANTA'}
 LABELS['wall_note'] = 'PARED (texto original)'
 LABELS['is_sample'] = 'PENDIENTE DE APROBACIÓN'
 CATALOGS = {'customer': Customer, 'destination': Destination, 'box': Box, 'sheet_color': SheetColor}
@@ -102,6 +102,13 @@ def parse_rows(job):
     return result
 
 def _validate_field(field, value):
+    if field == 'weight_unit':
+        if not value:
+            return ''
+        unit = value.strip().lower()
+        if unit not in ('kg', 'g'):
+            raise ValidationError('UNIDAD DEL PESO debe ser kg o g.')
+        return unit
     if field == 'is_sample':
         if fold(value) in ('SI', 'TRUE', '1', 'X'):
             return True

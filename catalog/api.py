@@ -14,7 +14,7 @@ class PartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Part
-        fields = ['id', 'part_number', 'is_sample', 'customer', 'destination', 'diameter', 'wall', 'wall_note', 'weight', 'box', 'std', 'sheet_color', 'reference_customer', 'reference_plant', 'active', 'version', 'created_at', 'updated_at']
+        fields = ['id', 'part_number', 'is_sample', 'customer', 'destination', 'diameter', 'wall', 'wall_note', 'weight', 'weight_unit', 'box', 'std', 'sheet_color', 'reference_customer', 'reference_plant', 'active', 'version', 'created_at', 'updated_at']
 
 
 def filter_samples(queryset, request):
@@ -35,7 +35,9 @@ def resync_required(request):
 
 
 def change_event(change, integration):
-    snapshot = {'is_sample': False, **change.after}
+    # Older audit snapshots predate per-part units. Expose the current unit so
+    # consumers rebuilding from the beginning do not lose this new field.
+    snapshot = {'is_sample': False, 'weight_unit': change.part.weight_unit, **change.after}
     # A removal marker avoids exposing sample data and removes previously cached records.
     if not integration.include_samples and (snapshot['is_sample'] or change.part.is_sample):
         return {'sequence': change.pk, 'operation': 'deactivate', 'part_id': str(change.part_id), 'excluded': True,

@@ -7,8 +7,8 @@ class PartForm(forms.ModelForm):
 
     class Meta:
         model = Part
-        fields = ["customer", "destination", "part_number", "is_sample", "diameter", "wall", "wall_note", "weight", "box", "std", "sheet_color", "reference_customer", "reference_plant"]
-        labels = {"customer": "Cliente", "destination": "Destino", "part_number": "Número de parte", "diameter": "Diámetro", "wall": "Pared", "weight": "Peso", "box": "Caja", "std": "STD.", "sheet_color": "Hoja color"}
+        fields = ["customer", "destination", "part_number", "is_sample", "diameter", "wall", "wall_note", "weight", "weight_unit", "box", "std", "sheet_color", "reference_customer", "reference_plant"]
+        labels = {"customer": "Cliente", "destination": "Destino", "part_number": "Número de parte", "diameter": "Diámetro", "wall": "Pared", "weight": "Peso", "weight_unit": "Unidad del peso", "box": "Caja", "std": "STD.", "sheet_color": "Hoja color"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -19,11 +19,19 @@ class PartForm(forms.ModelForm):
         self.fields['is_sample'].help_text = 'Marque si es una pieza nueva pendiente de aprobación para producción regular. Desmarque cuando sea aprobada.'
         self.fields['reference_customer'].label = 'Cliente (segunda columna)'
         self.fields['reference_plant'].label = 'Planta (columna adicional)'
+        self.fields['weight_unit'].help_text = 'Confirma la unidad usada para el valor de Peso. Macros usa esta unidad para calcular kilogramos.'
         self.fields['wall_note'].label = 'Pared (texto original, si no es decimal)'
         for name in ("customer", "destination", "box", "sheet_color"):
             self.fields[name].queryset = self.fields[name].queryset.filter(active=True)
         if self.instance and self.instance.pk:
             self.fields["version"].initial = self.instance.version
+
+    def clean(self):
+        cleaned = super().clean()
+        weight, unit = cleaned.get('weight'), cleaned.get('weight_unit')
+        if weight is not None and not unit:
+            self.add_error('weight_unit', 'Selecciona kg o g para confirmar la unidad de este peso.')
+        return cleaned
 
 class NamedForm(forms.Form):
     name = forms.CharField(max_length=150, label="Nombre")

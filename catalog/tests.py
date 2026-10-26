@@ -102,6 +102,17 @@ class CatalogTests(TestCase):
         self.assertEqual(self.client.post(reverse('catalog:create'), {}).status_code, 200)
         self.assertEqual(Part.objects.count(), 1)
 
+    def test_weight_requires_an_explicit_unit_and_accepts_kg_or_g(self):
+        from .forms import PartForm
+        form = PartForm(data={'part_number': '626962-01', 'weight': '125'})
+        self.assertFalse(form.is_valid())
+        self.assertIn('weight_unit', form.errors)
+        for unit in ('kg', 'g'):
+            form = PartForm(data={'part_number': f'626962-01-{unit}', 'weight': '125', 'weight_unit': unit})
+            self.assertTrue(form.is_valid(), form.errors)
+            part = create_part({key: form.cleaned_data[key] for key in form.Meta.fields}, self.editor)
+            self.assertEqual(part.weight_unit, unit)
+
     def test_import_without_customer_defaults_only_when_needed(self):
         part = create_part({'customer': self.customer, 'part_number': 'EXISTING'}, self.editor)
         job = self.make_job([['', 'NEW-1', None], ['', 'EXISTING', None]])
@@ -350,6 +361,17 @@ class CatalogTests(TestCase):
         integration.active = False
         integration.save()
         self.assertEqual(self.client.get('/api/v1/parts/', **headers).status_code, 401)
+
+    def test_api_exposes_weight_unit_in_parts_and_change_snapshots(self):
+        _, token = Integration.create_key('Weight units')
+        headers = {'HTTP_AUTHORIZATION': f'Bearer {token}'}
+        part = create_part({'customer': self.customer, 'part_number': 'UNIT-API',
+                            'weight': '125', 'weight_unit': 'g'}, self.editor)
+        listing = self.client.get('/api/v1/parts/', **headers).json()
+        self.assertEqual(listing['results'][0]['weight_unit'], 'g')
+        event = self.client.get('/api/v1/changes/', **headers).json()['results'][0]
+        self.assertEqual(event['part']['weight_unit'], 'g')
+        self.assertEqual(part.weight_unit, 'g')
 
     def test_sample_form_display_export_and_filters(self):
         self.client.force_login(self.editor)
